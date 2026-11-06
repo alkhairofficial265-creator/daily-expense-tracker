@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Expense Tracker - Rozmarrah Ke Kharchay</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0284c7',
+                            600: '#0369a1',
+                            700: '#075985',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom scrollbar for transaction list */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen pb-12">
+
+    <!-- Top Header -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+        <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-brand-500 text-white flex items-center justify-center font-bold text-xl shadow-md shadow-brand-500/20">
+                    <i class="fa-solid font-bold fa-wallet"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-slate-800 leading-tight">Daily Expense Tracker</h1>
+                    <p class="text-xs text-slate-500">Rozmarrah ke Kharchon ka Hisaab</p>
+                </div>
+            </div>
+            <button onclick="exportToCSV()" class="text-xs sm:text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium px-3 py-2 rounded-lg transition-colors flex items-center gap-2">
+                <i class="fa-solid fa-download"></i>
+                <span class="hidden sm:inline">Export CSV</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-6xl mx-auto px-4 pt-6">
+
+        <!-- 1. Top Summary Cards Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <!-- Total Balance Card -->
+            <div class="bg-gradient-to-br from-slate-900 to-slate-800 text-white p-6 rounded-2xl shadow-lg relative overflow-hidden">
+                <div class="absolute -right-4 -bottom-4 w-24 h-24 bg-white/5 rounded-full blur-xl pointer-events-none"></div>
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-slate-400 text-sm font-medium">Kul Balance (Current)</span>
+                    <span class="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center text-slate-300">
+                        <i class="fa-solid fa-scale-balanced text-sm"></i>
+                    </span>
+                </div>
+                <h2 id="total-balance" class="text-3xl font-extrabold tracking-tight">Rs 0</h2>
+                <p class="text-xs text-slate-400 mt-2 flex items-center gap-1">
+                    <i class="fa-solid fa-shield-halved text-emerald-400"></i> Local Storage Saved
+                </p>
+            </div>
+
+            <!-- Total Income Card -->
+            <div class="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-slate-500 text-sm font-medium">Kul Aamdani (Income)</span>
+                    <span class="w-8 h-8 bg-emerald-50 text-emerald-600 rounded-lg flex items-center justify-center">
+                        <i class="fa-solid fa-arrow-down-left text-sm"></i>
+                    </span>
+                </div>
+                <h2 id="total-income" class="text-3xl font-extrabold text-emerald-600 tracking-tight">Rs 0</h2>
+                <p class="text-xs text-slate-400 mt-2">Iss mahine ki total income</p>
+            </div>
+
+            <!-- Total Expense Card -->
+            <div class="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-slate-500 text-sm font-medium">Kul Kharcha (Expense)</span>
+                    <span class="w-8 h-8 bg-rose-50 text-rose-600 rounded-lg flex items-center justify-center">
+                        <i class="fa-solid fa-arrow-up-right text-sm"></i>
+                    </span>
+                </div>
+                <h2 id="total-expense" class="text-3xl font-extrabold text-rose-600 tracking-tight">Rs 0</h2>
+                <p class="text-xs text-slate-400 mt-2">Iss mahine ka total kharcha</p>
+            </div>
+        </div>
+
+        <!-- 2. Main Content Grid (Add Form & Analytics) -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-6">
+            
+            <!-- Left Side: Add Transaction Form (5 Cols) -->
+            <div class="lg:col-span-5 bg-white border border-slate-200 p-6 rounded-2xl shadow-sm">
+                <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-circle-plus text-brand-500"></i> Naya Indraj (Add Transaction)
+                </h3>
+
+                <form id="transaction-form" class="space-y-4">
+                    <!-- Type Selection (Income or Expense) -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-2">Kism (Type)</label>
+                        <div class="grid grid-cols-2 gap-3">
+                            <label class="cursor-pointer">
+                                <input type="radio" name="type" value="expense" checked class="peer hidden">
+                                <div class="w-full py-2.5 px-4 text-center rounded-xl border border-slate-200 font-medium text-slate-600 peer-checked:bg-rose-50 peer-checked:border-rose-500 peer-checked:text-rose-700 transition-all flex items-center justify-center gap-2 text-sm">
+                                    <i class="fa-solid fa-minus-circle"></i> Kharcha
+                                </div>
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" name="type" value="income" class="peer hidden">
+                                <div class="w-full py-2.5 px-4 text-center rounded-xl border border-slate-200 font-medium text-slate-600 peer-checked:bg-emerald-50 peer-checked:border-emerald-500 peer-checked:text-emerald-700 transition-all flex items-center justify-center gap-2 text-sm">
+                                    <i class="fa-solid fa-plus-circle"></i> Aamdani
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Amount Field -->
+                    <div>
+                        <label for="amount" class="block text-xs font-semibold text-slate-600 uppercase mb-1">Raqam (Amount in PKR)</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400 text-sm font-semibold">Rs</span>
+                            <input type="number" id="amount" required placeholder="0.00" min="1" step="any"
+                                class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition-all text-sm">
+                        </div>
+                    </div>
+
+                    <!-- Category Field -->
+                    <div>
+                        <label for="category" class="block text-xs font-semibold text-slate-600 uppercase mb-1">Category</label>
+                        <select id="category" required class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition-all text-sm">
+                            <option value="" disabled selected>Category chunien</option>
+                            <!-- Expense Categories -->
+                            <optgroup label="Kharchay (Expenses)">
+                                <option value="Khana & Grocery">🍔 Khana & Grocery</option>
+                                <option value="Bills & Utility">💡 Bills & Utilities</option>
+                                <option value="Transport & Fuel">🚗 Transport & Fuel</option>
+                                <option value="Shopping & Clothes">🛍️ Shopping & Clothes</option>
+                                <option value="Sehat & Medicine">💊 Sehat & Medicine</option>
+                                <option value="Taleem & Parhai">📚 Taleem & Books</option>
+                                <option value="Tafreeh & Fun">🎬 Tafreeh & Entertainment</option>
+                                <option value="Kalaam & Dena">🤝 Udhar / Miscellaneous</option>
+                            </optgroup>
+                            <!-- Income Categories -->
+                            <optgroup label="Aamdani (Income)">
+                                <option value="Tankhwah (Salary)">💼 Tankhwah (Salary)</option>
+                                <option value="Freelancing">💻 Freelancing</option>
+                                <option value="Karobaar (Business)">🏪 Karobaar / Profit</option>
+                                <option value="Inaam & Gift">🎁 Gift / Pocket Money</option>
+                            </optgroup>
+                        </select>
+                    </div>
+
+                    <!-- Date Field -->
+                    <div>
+                        <label for="date" class="block text-xs font-semibold text-slate-600 uppercase mb-1">Tareekh (Date)</label>
+                        <input type="date" id="date" required
+                            class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition-all text-sm">
+                    </div>
+
+                    <!-- Note Field -->
+                    <div>
+                        <label for="note" class="block text-xs font-semibold text-slate-600 uppercase mb-1">Tafseel (Note / Description)</label>
+                        <input type="text" id="note" placeholder="Wajah ya tafseel likhein (e.g. Doodh aur Roti)"
+                            class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition-all text-sm">
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button type="submit" class="w-full bg-brand-500 hover:bg-brand-600 text-white font-semibold py-3 rounded-xl shadow-lg shadow-brand-500/25 transition-all flex items-center justify-center gap-2 text-sm mt-2">
+                        <i class="fa-solid fa-plus"></i> Transaction Save Karein
+                    </button>
+                </form>
+            </div>
+
+            <!-- Right Side: Visual Analytics Chart (7 Cols) -->
+            <div class="lg:col-span-7 bg-white border border-slate-200 p-6 rounded-2xl shadow-sm flex flex-col justify-between">
+                <div>
+                    <h3 class="text-lg font-bold text-slate-800 mb-1 flex items-center gap-2">
+                        <i class="fa-solid fa-chart-pie text-brand-500"></i> Kharchon ki Taqseem (Expense Chart)
+                    </h3>
+                    <p class="text-xs text-slate-500 mb-4">Aap ka sab se zyada kharcha kis cheez par hua?</p>
+                </div>
+
+                <div class="relative w-full h-[260px] sm:h-[300px] flex items-center justify-center">
+                    <canvas id="expenseChart"></canvas>
+                    <div id="chart-fallback" class="hidden absolute text-slate-400 text-sm text-center">
+                        <i class="fa-solid fa-chart-pie text-4xl mb-2 text-slate-300"></i>
+                        <p>Abhi tak koi kharcha add nahi hua.</p>
+                    </div>
+                </div>
+
+                <div class="mt-4 pt-4 border-t border-slate-100 text-xs text-slate-400 text-center">
+                    Kharchay ka visual chart automatic update hota hai.
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. Transaction History Section -->
+        <div class="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                <div>
+                    <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-clock-rotate-left text-brand-500"></i> Kharchon ki History
+                    </h3>
+                    <p class="text-xs text-slate-500">Tamam pichli aamdani aur kharchay</p>
+                </div>
+
+                <!-- Filters and Search -->
+                <div class="flex flex-wrap items-center gap-2">
+                    <!-- Search Input -->
+                    <div class="relative flex-1 sm:w-48">
+                        <input type="text" id="search-input" placeholder="Search history..." onkeyup="filterTransactions()"
+                            class="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-brand-500">
+                        <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2.5 text-slate-400 text-xs"></i>
+                    </div>
+
+                    <!-- Type Filter -->
+                    <select id="filter-type" onchange="filterTransactions()" class="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                        <option value="all">Tamam (All)</option>
+                        <option value="expense">Sirf Kharchay</option>
+                        <option value="income">Sirf Aamdani</option>
+                    </select>
+
+                    <!-- Clear All Button -->
+                    <button onclick="clearAllData()" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg text-xs font-semibold transition-colors">
+                        Clear All
+                    </button>
+                </div>
+            </div>
+
+            <!-- List Container -->
+            <div class="overflow-x-auto">
+                <div class="max-h-[350px] overflow-y-auto custom-scrollbar pr-1">
+                    <ul id="transaction-list" class="space-y-2">
+                        <!-- Items rendered via JS -->
+                    </ul>
+                    <div id="empty-state" class="hidden text-center py-12 text-slate-400">
+                        <i class="fa-solid fa-receipt text-4xl mb-3 text-slate-300"></i>
+                        <p class="text-sm">Abhi tak koi transaction record nahi hui.</p>
+                        <p class="text-xs text-slate-400 mt-1">Upar diye gaye form se naye kharchay add karein.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Custom Toast Notification -->
+    <div id="toast" class="fixed bottom-5 right-5 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-2xl text-xs sm:text-sm font-medium transition-all duration-300 opacity-0 translate-y-10 pointer-events-none flex items-center gap-2 z-50">
+        <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400"></i>
+        <span id="toast-message">Operation successful</span>
+    </div>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // State Management
+        let transactions = JSON.parse(localStorage.getItem('daily_expense_transactions')) || [];
+        let expenseChart = null;
+
+        // DOM Elements
+        const form = document.getElementById('transaction-form');
+        const amountInput = document.getElementById('amount');
+        const categoryInput = document.getElementById('category');
+        const dateInput = document.getElementById('date');
+        const noteInput = document.getElementById('note');
+        const transactionList = document.getElementById('transaction-list');
+        const emptyState = document.getElementById('empty-state');
+
+        // Summary DOM
+        const totalBalanceEl = document.getElementById('total-balance');
+        const totalIncomeEl = document.getElementById('total-income');
+        const totalExpenseEl = document.getElementById('total-expense');
+
+        // Set default date to today
+        dateInput.valueAsDate = new Date();
+
+        // Initialize App
+        window.onload = function() {
+            renderApp();
+        };
+
+        // Handle Form Submission
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const type = document.querySelector('input[name="type"]:checked').value;
+            const amount = parseFloat(amountInput.value);
+            const category = categoryInput.value;
+            const date = dateInput.value;
+            const note = noteInput.value.trim() || category;
+
+            if (!amount || amount <= 0 || !category || !date) {
+                showToast('Baraye meharbani saari details darust bharein', 'error');
+                return;
+            }
+
+            const transaction = {
+                id: Date.now(),
+                type,
+                amount,
+                category,
+                date,
+                note
+            };
+
+            transactions.unshift(transaction);
+            saveTransactions();
+            renderApp();
+
+            // Reset Form (keep date as today)
+            form.reset();
+            dateInput.valueAsDate = new Date();
+            document.querySelector('input[name="type"][value="expense"]').checked = true;
+
+            showToast('Transaction kamyabi se save ho gayi!', 'success');
+        });
+
+        // Save to LocalStorage
+        function saveTransactions() {
+            localStorage.setItem('daily_expense_transactions', JSON.stringify(transactions));
+        }
+
+        // Render Complete App State
+        function renderApp() {
+            updateSummary();
+            renderList(transactions);
+            updateChart();
+        }
+
+        // Update Top Summary Totals
+        function updateSummary() {
+            const income = transactions
+                .filter(t => t.type === 'income')
+                .reduce((acc, t) => acc + t.amount, 0);
+
+            const expense = transactions
+                .filter(t => t.type === 'expense')
+                .reduce((acc, t) => acc + t.amount, 0);
+
+            const balance = income - expense;
+
+            totalBalanceEl.innerText = `Rs ${balance.toLocaleString('en-PK')}`;
+            totalIncomeEl.innerText = `Rs ${income.toLocaleString('en-PK')}`;
+            totalExpenseEl.innerText = `Rs ${expense.toLocaleString('en-PK')}`;
+        }
+
+        // Render History List
+        function renderList(data) {
+            transactionList.innerHTML = '';
+
+            if (data.length === 0) {
+                emptyState.classList.remove('hidden');
+                return;
+            } else {
+                emptyState.classList.add('hidden');
+            }
+
+            data.forEach(t => {
+                const li = document.createElement('li');
+                const isExpense = t.type === 'expense';
+                
+                li.className = `flex items-center justify-between p-3.5 rounded-xl border border-slate-100 bg-white hover:border-slate-200 transition-all group`;
+
+                li.innerHTML = `
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="w-10 h-10 rounded-xl ${isExpense ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'} flex items-center justify-center font-bold text-sm shrink-0">
+                            <i class="${isExpense ? 'fa-solid fa-arrow-up-right' : 'fa-solid fa-arrow-down-left'}"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <h4 class="text-sm font-semibold text-slate-800 truncate">${escapeHtml(t.note)}</h4>
+                            <div class="flex items-center gap-2 text-xs text-slate-400 mt-0.5">
+                                <span class="bg-slate-100 px-2 py-0.5 rounded text-slate-600 font-medium">${escapeHtml(t.category)}</span>
+                                <span>•</span>
+                                <span>${formatDate(t.date)}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3 shrink-0 ml-2">
+                        <span class="font-bold text-sm sm:text-base ${isExpense ? 'text-rose-600' : 'text-emerald-600'}">
+                            ${isExpense ? '-' : '+'} Rs ${t.amount.toLocaleString('en-PK')}
+                        </span>
+                        <button onclick="deleteTransaction(${t.id})" class="text-slate-300 hover:text-rose-600 p-1.5 rounded-lg transition-colors" title="Delete">
+                            <i class="fa-solid fa-trash-can text-sm"></i>
+                        </button>
+                    </div>
+                `;
+
+                transactionList.appendChild(li);
+            });
+        }
+
+        // Delete Single Transaction
+        function deleteTransaction(id) {
+            transactions = transactions.filter(t => t.id !== id);
+            saveTransactions();
+            renderApp();
+            showToast('Item delete kar diya gaya hai', 'info');
+        }
+
+        // Clear All Data
+        function clearAllData() {
+            if (transactions.length === 0) return;
+            
+            if (confirm('Kya aap apna tamam record khatam karna chahte hain?')) {
+                transactions = [];
+                saveTransactions();
+                renderApp();
+                showToast('Tamam record safa ho gaya', 'info');
+            }
+        }
+
+        // Filter and Search Transactions
+        function filterTransactions() {
+            const searchValue = document.getElementById('search-input').value.toLowerCase();
+            const filterTypeValue = document.getElementById('filter-type').value;
+
+            const filtered = transactions.filter(t => {
+                const matchesSearch = t.note.toLowerCase().includes(searchValue) || t.category.toLowerCase().includes(searchValue);
+                const matchesType = filterTypeValue === 'all' || t.type === filterTypeValue;
+
+                return matchesSearch && matchesType;
+            });
+
+            renderList(filtered);
+        }
+
+        // Update Visual Pie Chart
+        function updateChart() {
+            const ctx = document.getElementById('expenseChart').getContext('2d');
+            const fallback = document.getElementById('chart-fallback');
+
+            // Group Expenses by Category
+            const expenses = transactions.filter(t => t.type === 'expense');
+            
+            if (expenses.length === 0) {
+                if (expenseChart) expenseChart.destroy();
+                fallback.classList.remove('hidden');
+                return;
+            } else {
+                fallback.classList.add('hidden');
+            }
+
+            const categoryTotals = {};
+            expenses.forEach(t => {
+                categoryTotals[t.category] = (categoryTotals[t.category] || 0) + t.amount;
+            });
+
+            const labels = Object.keys(categoryTotals);
+            const data = Object.values(categoryTotals);
+
+            const colors = [
+                '#f43f5e', '#0284c7', '#10b981', '#f59e0b', 
+                '#8b5cf6', '#ec4899', '#14b8a6', '#64748b'
+            ];
+
+            if (expenseChart) {
+                expenseChart.destroy();
+            }
+
+            expenseChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: colors.slice(0, labels.length),
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                font: { family: 'Inter', size: 11 },
+                                boxWidth: 12,
+                                padding: 12
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return ` Rs ${context.raw.toLocaleString('en-PK')}`;
+                                }
+                            }
+                        }
+                    },
+                    cutout: '65%'
+                }
+            });
+        }
+
+        // Export Data to CSV
+        function exportToCSV() {
+            if (transactions.length === 0) {
+                showToast('Export karne ke liye koi data nahi hai', 'error');
+                return;
+            }
+
+            let csvContent = "data:text/csv;charset=utf-8,ID,Type,Category,Amount,Date,Note\n";
+            transactions.forEach(t => {
+                csvContent += `${t.id},${t.type},"${t.category}",${t.amount},${t.date},"${t.note}"\n`;
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `Expense_Report_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            showToast('CSV Report Download ho gayi!', 'success');
+        }
+
+        // Helper: Format Date
+        function formatDate(dateStr) {
+            const options = { month: 'short', day: 'numeric', year: 'numeric' };
+            return new Date(dateStr).toLocaleDateString('en-US', options);
+        }
+
+        // Helper: Escape HTML string to prevent XSS
+        function escapeHtml(str) {
+            return str.replace(/[&<>'"]/g, 
+                tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+            );
+        }
+
+        // Helper: Show Custom Toast Notification
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toast-message');
+            const toastIcon = document.getElementById('toast-icon');
+
+            toastMessage.innerText = message;
+
+            if (type === 'error') {
+                toastIcon.className = 'fa-solid fa-circle-xmark text-rose-400';
+            } else if (type === 'info') {
+                toastIcon.className = 'fa-solid fa-circle-info text-sky-400';
+            } else {
+                toastIcon.className = 'fa-solid fa-circle-check text-emerald-400';
+            }
+
+            toast.classList.remove('opacity-0', 'translate-y-10', 'pointer-events-none');
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-10', 'pointer-events-none');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
